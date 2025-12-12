@@ -30,7 +30,13 @@ export class VoidEngine {
     domain_state: "CALCULATING",
     signal: "STANDBY",
     monolith_stars: 0,
-    titans: []
+    titans: [
+      { name: "CTD (Kinetic)", value: "0", active: false },
+      { name: "OBI (Pressure)", value: "0.0", active: false },
+      { name: "LQ  (Elasticity)", value: "0.0", active: false },
+      { name: "BASIS", value: "0.0%", active: true },
+      { name: "WA  (Volume)", value: "---", active: false },
+    ]
   };
 
   private trades: Array<{ p: number; q: number; b: boolean; t: number }> = [];
@@ -54,7 +60,7 @@ export class VoidEngine {
     this.ws = new WebSocket(wsUrl);
 
     this.ws.onopen = () => {
-        console.log(">>> MONOLITH LEDGER CONNECTED: " + this.symbol);
+        console.log(">>> LEDGER CONNECTED: " + this.symbol);
     };
 
     this.ws.onmessage = (event) => {
@@ -85,21 +91,19 @@ export class VoidEngine {
     this.trades.push({ p, q, b: is_buyer, t: t_now });
     if (this.trades.length > 1000) this.trades.shift();
 
-    // CTD (Kinetic) - Net Flow 3s
+    // CTD (Kinetic)
     const recent = this.trades.filter(t => t.t > t_now - 3);
     const buy_vol = recent.filter(t => t.b).reduce((sum, t) => sum + t.q, 0);
     const sell_vol = recent.filter(t => !t.b).reduce((sum, t) => sum + t.q, 0);
     this.state.void_kinetic = buy_vol - sell_vol;
 
-    // LQ (Elasticity) - Micro-Burst
-    const micro = this.trades.slice(-15);
+    // LQ (Elasticity/Micro-Burst)
+    const micro = this.trades.slice(-20);
     if (micro.length > 1) {
       const micro_price_delta = micro[micro.length - 1].p - micro[0].p;
       const micro_vol = micro.reduce((sum, t) => sum + t.q, 0);
       if (micro_vol > 0.01) {
         this.state.void_elasticity = (micro_price_delta / micro_vol) * 10000;
-      } else {
-        this.state.void_elasticity = 0;
       }
     }
   }
@@ -140,9 +144,9 @@ export class VoidEngine {
       const variance = this.imbalance_hist.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / n;
       const volatility = Math.sqrt(variance);
 
-      if (volatility < 0.1) this.state.domain_state = "STAGNANT";
-      else if (volatility < 0.4) this.state.domain_state = "STABLE";
-      else this.state.domain_state = "VOLATILE";
+      if (volatility < 0.1) this.state.domain_state = "STAGNATION";
+      else if (volatility < 0.35) this.state.domain_state = "EQUILIBRIUM";
+      else this.state.domain_state = "VOLATILITY";
     }
   }
 
@@ -150,38 +154,50 @@ export class VoidEngine {
     const k = this.state.void_kinetic;   // CTD
     const p = this.state.void_pressure;  // OBI
     const e = this.state.void_elasticity;// LQ
-    
+    const d = this.state.domain_state;
+
     let stars = 0;
-    
-    const ctd_active = Math.abs(k) > 50.0;
+
+    // 1. CTD > Threshold
+    const ctd_active = Math.abs(k) > 50;
     if (ctd_active) stars++;
-    
+
+    // 2. OBI > Threshold
     const obi_active = Math.abs(p) > 0.3;
     if (obi_active) stars++;
-    
-    const lq_active = Math.abs(e) > 2.0; 
+
+    // 3. LQ > Threshold
+    const lq_active = Math.abs(e) > 2.0;
     if (lq_active) stars++;
 
-    // Regime Check
-    const regime_active = this.state.domain_state === "VOLATILE";
+    // 4. Regime Valid (Volatility)
+    const regime_active = d === "VOLATILITY";
     if (regime_active) stars++;
+
+    // 5. Whale Absorption (Simulated based on alignment)
+    // If CTD and OBI align
+    const wa_active = (k > 0 && p > 0) || (k < 0 && p < 0);
+    if (wa_active) stars++;
 
     this.state.monolith_stars = stars;
 
-    // Signal Logic 
-    if (k > 50.0 && e < 0.5) this.state.signal = "SHORT (TRAP)";
-    else if (k > 50.0 && e > 2.0) this.state.signal = "LONG (BREAK)";
-    else if (k < -50.0 && e > -0.5) this.state.signal = "LONG (TRAP)";
-    else if (k < -50.0 && e < -2.0) this.state.signal = "SHORT (BREAK)";
-    else this.state.signal = "OBSERVE";
-
-    // Titans for UI
+    // Update Titan Display
     this.state.titans = [
         { name: "CTD (Kinetic)", value: k.toFixed(1), active: ctd_active },
         { name: "OBI (Pressure)", value: p.toFixed(2), active: obi_active },
         { name: "LQ  (Elasticity)", value: e.toFixed(2), active: lq_active },
-        { name: "BASIS", value: "---", active: false }, 
-        { name: "WA", value: "---", active: false } 
+        { name: "BASIS", value: "0.01%", active: true }, // Static for now
+        { name: "WA  (Whale)", value: wa_active ? "DETECTED" : "---", active: wa_active },
     ];
+
+    // Verdict
+    if (stars >= 4) {
+        if (k > 0) this.state.signal = "EXECUTE LONG";
+        else this.state.signal = "EXECUTE SHORT";
+    } else if (stars === 3) {
+        this.state.signal = "PREPARE";
+    } else {
+        this.state.signal = "STANDBY";
+    }
   }
 }

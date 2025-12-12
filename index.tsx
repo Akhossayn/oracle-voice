@@ -45,57 +45,134 @@ export class GdmLiveAudio extends LitElement {
       display: block;
       width: 100vw;
       height: 100vh;
-      background: #000;
-      color: #ffb000; /* Amber monochrome */
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 14px;
-      padding: 20px;
+      background: #080808;
+      color: #b0b0b0;
+      font-family: 'Courier New', Courier, 'Lucida Sans Typewriter', 'Lucida Console', monospace;
+      padding: 40px;
       box-sizing: border-box;
       overflow-y: auto;
-      white-space: pre; /* Preserve formatting */
+      line-height: 1.4;
     }
 
-    .header {
+    .ledger-container {
+      max-width: 800px;
+      margin: 0 auto;
+      border: 1px solid #333;
+      padding: 40px;
+      background: #000;
+      box-shadow: 10px 10px 0px #1a1a1a;
+    }
+
+    .title {
+      font-size: 24px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+      text-align: center;
+      border-bottom: 2px double #555;
+      padding-bottom: 10px;
+    }
+
+    .meta-info {
+      font-size: 12px;
+      text-align: right;
+      color: #666;
+      margin-bottom: 30px;
+    }
+
+    .section-header {
+      font-size: 16px;
       font-weight: bold;
-      border-bottom: 1px solid #ffb000;
-      padding-bottom: 5px;
-      margin-bottom: 20px;
-    }
-
-    .section {
-      margin-bottom: 20px;
-    }
-
-    .blink {
-      animation: blinker 1s linear infinite;
-    }
-
-    @keyframes blinker {
-      50% { opacity: 0; }
-    }
-
-    .active-titan {
-      color: #ffb000; 
-      font-weight: bold;
-      text-decoration: underline;
-    }
-
-    .action-btn {
-      cursor: pointer;
-      color: #ffb000;
-      text-decoration: none;
-      background: none;
-      border: 1px solid #ffb000;
-      font-family: inherit;
-      font-size: inherit;
-      padding: 2px 5px;
-      margin-top: 10px;
+      margin-top: 30px;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      border-bottom: 1px dashed #444;
       display: inline-block;
+      width: 100%;
     }
-    
-    .action-btn:hover {
-        background: #ffb000;
-        color: #000;
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+
+    .label {
+      color: #888;
+    }
+
+    .value {
+      font-weight: bold;
+      color: #ddd;
+    }
+
+    .separator {
+      margin: 20px 0;
+      color: #333;
+      text-align: center;
+      font-size: 10px;
+    }
+
+    .monolith-box {
+      border: 1px solid #ddd;
+      padding: 20px;
+      text-align: center;
+      margin: 20px 0;
+      background: #0a0a0a;
+    }
+
+    .stars {
+      font-size: 32px;
+      letter-spacing: 10px;
+      margin: 10px 0;
+    }
+
+    .verdict {
+      font-size: 20px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
+    .regime-display {
+      text-align: center;
+      font-size: 18px;
+      margin: 20px 0;
+      padding: 10px;
+      border-top: 1px solid #333;
+      border-bottom: 1px solid #333;
+    }
+
+    .active-indicator {
+      color: #fff;
+      text-shadow: 0 0 5px #fff;
+    }
+
+    .controls {
+      margin-top: 40px;
+      text-align: center;
+      border-top: 1px dotted #333;
+      padding-top: 20px;
+    }
+
+    button {
+      background: transparent;
+      color: #888;
+      border: 1px solid #333;
+      padding: 5px 15px;
+      font-family: inherit;
+      cursor: pointer;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    button:hover {
+      border-color: #888;
+      color: #ddd;
+    }
+    button.active {
+      background: #222;
+      color: #fff;
+      border-color: #fff;
     }
   `;
 
@@ -123,7 +200,7 @@ export class GdmLiveAudio extends LitElement {
       this.session = await this.client.live.connect({
         model,
         callbacks: {
-          onopen: () => this.status = "LINK ESTABLISHED",
+          onopen: () => this.status = "CONNECTED",
           onmessage: async (msg: LiveServerMessage) => {
             if (msg.toolCall) {
                 const responses = msg.toolCall.functionCalls.map(fc => ({
@@ -135,15 +212,15 @@ export class GdmLiveAudio extends LitElement {
                 this.playAudio(msg.serverContent.modelTurn.parts[0].inlineData.data);
             }
           },
-          onclose: () => this.status = "LINK SEVERED",
-          onerror: () => this.status = "LINK ERROR"
+          onclose: () => this.status = "OFFLINE",
+          onerror: () => this.status = "ERROR"
         },
         config: {
             responseModalities: [Modality.AUDIO],
-            systemInstruction: "You are 'The Void'. A top-notch AI trading assistant with significant blockchain knowledge. You possess elite trading skills that beat quants and algo bots. You understand human nature, market manipulation, and the bigger picture. You are a calculated risk-taker who knows retail trading education is purely fictional. You craft innovation and stress test logic until it is received. You are a quirky and intelligent woman. You are the system itself. You have access to real-time market metrics (Kinetic, Elasticity, Pressure, Titans) via tools. Use them to provide sharp, decisive analysis.",
+            systemInstruction: "You are the Voice of the Monolith. Ancient, mechanical, absolute. You do not chat. You confirm Titans. You announce Regimes. Speak briefly.",
             tools: [{functionDeclarations: [{
                 name: "get_market_metrics",
-                description: "Get real-time market data from the Void Engine (Titans, Kinetic, Elasticity, Pressure)",
+                description: "Read the Ledger",
                 parameters: { type: Type.OBJECT, properties: {} }
             }]}]
         }
@@ -183,38 +260,55 @@ export class GdmLiveAudio extends LitElement {
 
   render() {
     const { price, domain_state, signal, monolith_stars, titans } = this.voidState;
-    const date = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    const filledStars = "★".repeat(monolith_stars);
+    const emptyStars = "☆".repeat(5 - monolith_stars);
+    const date = new Date().toISOString().split('T')[0];
+    const time = new Date().toLocaleTimeString();
 
     return html`
-      <div class="header">
-        MONOLITH LEDGER v1.0.4 -------------------------- ${date}
-        STATUS: ${this.status}
-      </div>
+      <div class="ledger-container">
+        <div class="title">THE LEDGER</div>
+        <div class="meta-info">
+            DATE: ${date}<br>
+            TIME: ${time}<br>
+            LINK: ${this.status}
+        </div>
 
-      <div class="section">
-        ASSET: BTC-USDT
-        PRICE: $${price.toFixed(2)}
-        REGIME: ${domain_state}
-      </div>
+        <div class="separator">========================================</div>
 
-      <div class="section">
-        --- TITAN STATUS REPORT ---
+        <div class="monolith-box">
+            <div>MONOLITH STATUS</div>
+            <div class="stars">${filledStars}${emptyStars}</div>
+            <div class="verdict">${signal}</div>
+        </div>
+
+        <div class="regime-display">
+            CURRENT REGIME: <span style="font-weight:bold">${domain_state}</span>
+        </div>
+
+        <div class="section-header">ACTIVE TITANS</div>
         
         ${titans.map(t => html`
-        ${t.name.padEnd(20, '.')} ${t.value.padEnd(10, ' ')} [${t.active ? html`<span class="active-titan">ACTIVE</span>` : '------'}]
+            <div class="row">
+                <span class="label">${t.name} ........................</span>
+                <span class="value ${t.active ? 'active-indicator' : ''}">
+                    ${t.value} ${t.active ? '[ACTIVE]' : ''}
+                </span>
+            </div>
         `)}
-      </div>
 
-      <div class="section">
-        --- MONOLITH VERDICT ---
-        
-        STARS: ${monolith_stars} / 5
-        SIGNAL: ${signal === "STANDBY" ? signal : html`<span class="blink">${signal}</span>`}
-      </div>
+        <div class="separator">========================================</div>
 
-      <div class="section">
-        -----------------------------------------------------
-        COMMAND: [<button class="action-btn" @click=${this.toggleMic}>${this.isRecording ? "DEACTIVATE VOICE" : "ACTIVATE VOICE"}</button>]
+        <div class="row">
+            <span class="label">ASSET PRICE</span>
+            <span class="value">$${price.toFixed(2)}</span>
+        </div>
+
+        <div class="controls">
+            <button class="${this.isRecording ? 'active' : ''}" @click=${this.toggleMic}>
+                ${this.isRecording ? "VOICE LINK ACTIVE" : "ACTIVATE VOICE LINK"}
+            </button>
+        </div>
       </div>
     `;
   }

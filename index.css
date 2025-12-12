@@ -4,22 +4,7 @@ body {
   padding: 0;
   width: 100vw;
   height: 100vh;
-  background-color: #000;
-  color: #ffb000;
+  background-color: #080808;
+  color: #dcdccc;
   font-family: 'Courier New', Courier, monospace;
-  overflow: hidden;
-}
-
-/* Scrollbar styling for webkit */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: #000; 
-}
-::-webkit-scrollbar-thumb {
-  background: #333; 
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #555; 
 }
